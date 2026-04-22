@@ -1,0 +1,1902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>TASKFLOW NDC1877 v1.5</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── THEME VARS ── */
+    :root {
+      --bg:       #f1f5f9;
+      --surface:  #ffffff;
+      --surface2: #f8fafc;
+      --border:   #e2e8f0;
+      --fg:       #0b1120;
+      --fg2:      #475569;
+      --fg3:      #94a3b8;
+      --input-bg: #f8fafc;
+      --navy:     #0b1120;
+      --amber:    #f59e0b;
+    }
+    html[data-dark] {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --surface2: #1e2530;
+      --border:   #30363d;
+      --fg:       #e6edf3;
+      --fg2:      #8b949e;
+      --fg3:      #6e7681;
+      --input-bg: #1e2530;
+    }
+
+    body {
+      font-family: 'Barlow', sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+    input, select, button, textarea { font-family: 'Barlow', sans-serif; }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--amber) !important;
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+    }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+
+    @keyframes fadeIn   { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes slideUp  { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes sheetUp  { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .fade-in  { animation: fadeIn  0.25s ease forwards; }
+    .slide-up { animation: slideUp 0.3s  ease forwards; }
+    .pulse    { animation: pulse   1.5s  infinite; }
+
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      border: 1px solid rgba(0,0,0,0.04);
+      transition: background 0.2s;
+    }
+    html[data-dark] .card { box-shadow: 0 2px 12px rgba(0,0,0,0.35); border-color: var(--border); }
+
+    .chip {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 0.7rem; font-weight: 700;
+      font-family: 'Barlow Condensed', sans-serif;
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .tile-hover { transition: transform 0.12s; }
+    .tile-hover:active { transform: scale(0.96) !important; }
+
+    /* Dark mode input overrides */
+    html[data-dark] input,
+    html[data-dark] select,
+    html[data-dark] textarea {
+      background: var(--input-bg) !important;
+      border-color: var(--border) !important;
+      color: var(--fg) !important;
+    }
+    html[data-dark] input::placeholder,
+    html[data-dark] textarea::placeholder { color: var(--fg3) !important; }
+    html[data-dark] select option { background: var(--surface2); color: var(--fg); }
+
+    /* Semantic row colors */
+    .row-done   { background: #f0fdf4; }
+    .row-stripe { background: #fafbfc; }
+    html[data-dark] .row-done   { background: #052e16 !important; }
+    html[data-dark] .row-stripe { background: #1a2332 !important; }
+    html[data-dark] .row-done td { color: #86efac !important; border-bottom-color: #1a4731 !important; }
+
+    @media (min-width: 1025px) {
+      .desktop-grid { max-width: 900px; margin: 0 auto; }
+      .tile-grid    { grid-template-columns: repeat(4, 1fr) !important; }
+      .stat-grid    { grid-template-columns: repeat(4, 1fr) !important; }
+
+      /* Staff task table — larger rows & fonts for desktop readability */
+      .staff-tbl th                  { padding: 14px 16px !important; font-size: 0.85rem !important; }
+      .staff-tbl td                  { padding: 18px 16px !important; }
+      .staff-tbl td:nth-child(1)     { font-size: 0.95rem !important; }
+      .staff-tbl td:nth-child(2)     { font-size: 1.05rem !important; }
+      .staff-tbl td:nth-child(3)     { font-size: 0.95rem !important; }
+      .staff-tbl td:nth-child(4)     { font-size: 0.9rem  !important; }
+      .staff-tbl td button           { padding: 9px 18px !important; font-size: 0.9rem !important; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+// ══════════════════════════════════
+//  FIREBASE CONFIG
+// ══════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "AIzaSyBPPnxufBqatXd9WG1KAUTA2IGeHkXr9Jo",
+  authDomain:        "taskflow-nds.firebaseapp.com",
+  projectId:         "taskflow-nds",
+  storageBucket:     "taskflow-nds.firebasestorage.app",
+  messagingSenderId: "206226157612",
+  appId:             "1:206226157612:web:bc29bb0a5311aa129ee189"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+// Ensure anonymous sign-in before any Firestore call
+async function ensureAuth() {
+  if (auth.currentUser) return auth.currentUser;
+  return new Promise((resolve, reject) => {
+    const unsub = auth.onAuthStateChanged(u => {
+      if (u) { unsub(); resolve(u); }
+    });
+    auth.signInAnonymously().catch(err => { unsub(); reject(err); });
+  });
+}
+
+// ══════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════
+const { useState, useEffect, useRef, useCallback } = React;
+
+const todayStr  = () => new Date().toISOString().split('T')[0];
+const todayDate = () => new Date(todayStr() + 'T00:00:00');
+
+function taskActiveOnDate(task, dateStr) {
+  if (task.active === false) return false;
+  if (task.repeatType === 'everyday') return task.startDate <= dateStr;
+  if (task.repeatType === 'specific') return (task.specificDates || []).includes(dateStr);
+  if (task.repeatType === 'afterX') {
+    if (!task.startDate || task.startDate > dateStr) return false;
+    const diff = Math.round((new Date(dateStr+'T00:00:00') - new Date(task.startDate+'T00:00:00')) / 86400000);
+    return diff % (parseInt(task.intervalDays) || 1) === 0;
+  }
+  return false;
+}
+const taskActiveToday = t => taskActiveOnDate(t, todayStr());
+
+function tsToDate(ts) {
+  if (!ts) return null;
+  if (ts.toDate) return ts.toDate();
+  if (ts instanceof Date) return ts;
+  return null;
+}
+function fmtTime(d) {
+  if (!d) return '—';
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function calcLateMins(deadline, compDate) {
+  if (!compDate || !deadline) return null;
+  const [dh, dm] = deadline.split(':').map(Number);
+  return (compDate.getHours() * 60 + compDate.getMinutes()) - (dh * 60 + dm);
+}
+function fmtLate(mins) {
+  if (mins === null) return null;
+  if (mins <= 0) return 'ON TIME';
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return h > 0 ? `${h}H ${m}M` : `${m}M`;
+}
+
+async function seedAdmin() {
+  try {
+    const snap = await db.collection('users').where('userId','==','admin').limit(1).get();
+    if (!snap.empty) return;
+    await db.collection('users').add({ userId:'admin', password:'Admin786', name:'Admin', role:'admin', createdAt:new Date() });
+  } catch(e) {}
+}
+
+// ══════════════════════════════════
+//  STYLE OBJECTS  (CSS vars for theme)
+// ══════════════════════════════════
+const S = {
+  input: {
+    width:'100%', padding:'11px 14px',
+    border:'1.5px solid var(--border)', borderRadius:'9px',
+    fontSize:'0.9rem', color:'var(--fg)',
+    background:'var(--input-bg)', transition:'border 0.2s, box-shadow 0.2s'
+  },
+  label: {
+    display:'block', fontFamily:"'Barlow Condensed',sans-serif",
+    fontSize:'0.72rem', fontWeight:'700',
+    color:'var(--fg2)', marginBottom:'5px',
+    textTransform:'uppercase', letterSpacing:'0.8px'
+  },
+  btnPrimary: {
+    background:'#0b1120', color:'white', border:'none',
+    padding:'12px 20px', borderRadius:'9px', cursor:'pointer',
+    fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700',
+    fontSize:'0.9rem', letterSpacing:'1.5px', textTransform:'uppercase', transition:'opacity 0.15s'
+  },
+  btnAmber: {
+    background:'#f59e0b', color:'#0b1120', border:'none',
+    padding:'12px 20px', borderRadius:'9px', cursor:'pointer',
+    fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700',
+    fontSize:'0.9rem', letterSpacing:'1.5px', textTransform:'uppercase'
+  },
+  btnGhost: {
+    background:'transparent', color:'var(--fg2)',
+    border:'1.5px solid var(--border)', padding:'11px 20px',
+    borderRadius:'9px', cursor:'pointer',
+    fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700',
+    fontSize:'0.9rem', letterSpacing:'1.5px', textTransform:'uppercase'
+  },
+  btnSmall: {
+    padding:'5px 12px', borderRadius:'7px', border:'none',
+    cursor:'pointer', fontSize:'0.7rem', fontWeight:'700',
+    fontFamily:"'Barlow Condensed',sans-serif",
+    letterSpacing:'0.8px', textTransform:'uppercase'
+  },
+  th: {
+    padding:'11px 12px', fontFamily:"'Barlow Condensed',sans-serif",
+    fontSize:'0.7rem', fontWeight:'700', letterSpacing:'1.5px',
+    textTransform:'uppercase', textAlign:'left', whiteSpace:'nowrap'
+  },
+  td: {
+    padding:'13px 12px', fontSize:'0.85rem',
+    verticalAlign:'middle', borderBottom:'1px solid var(--border)'
+  },
+  page:    { minHeight:'100vh', background:'var(--bg)' },
+  section: { padding:'16px' },
+};
+
+// ══════════════════════════════════
+//  MICRO-COMPONENTS
+// ══════════════════════════════════
+function Input({ label, hint, prefix, ...props }) {
+  return (
+    <div style={{marginBottom:'14px'}}>
+      {label && <label style={S.label}>{label}</label>}
+      <div style={{position:'relative'}}>
+        {prefix && <span style={{position:'absolute',left:'12px',top:'50%',transform:'translateY(-50%)',fontSize:'0.9rem',color:'var(--fg3)',pointerEvents:'none'}}>{prefix}</span>}
+        <input style={{...S.input, paddingLeft:prefix?'32px':'14px'}} {...props} />
+      </div>
+      {hint && <div style={{fontSize:'0.7rem',color:'var(--fg3)',marginTop:'4px',fontFamily:"'IBM Plex Mono',monospace"}}>{hint}</div>}
+    </div>
+  );
+}
+
+function Select({ label, hint, children, ...props }) {
+  return (
+    <div style={{marginBottom:'14px'}}>
+      {label && <label style={S.label}>{label}</label>}
+      <select style={{
+        ...S.input, cursor:'pointer', appearance:'none',
+        backgroundImage:"url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2364748b' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E\")",
+        backgroundRepeat:'no-repeat', backgroundPosition:'right 12px center',
+        backgroundSize:'16px', paddingRight:'36px'
+      }} {...props}>
+        {children}
+      </select>
+      {hint && <div style={{fontSize:'0.7rem',color:'var(--fg3)',marginTop:'4px',fontFamily:"'IBM Plex Mono',monospace"}}>{hint}</div>}
+    </div>
+  );
+}
+
+function AdminHeader({ title, subtitle, onBack, onLogout, isDark, onToggleDark, navigate, currentScreen }) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const menuItems = [
+    { icon:'🏠', label:'HOME',              screen:'adminDash' },
+    { icon:'🏢', label:'CREATE BUSINESS',   screen:'createBusiness' },
+    { icon:'🏬', label:'CREATE DEPARTMENT', screen:'createDepartment' },
+    { icon:'👤', label:'CREATE USER',       screen:'createUser' },
+    { icon:'✅', label:'CREATE TASK',       screen:'createTask' },
+    { icon:'📊', label:'MANAGE BUSINESS',   screen:'manageBusiness' },
+    { icon:'📋', label:'REPORTS',           screen:'reports' },
+  ];
+
+  const go = (screen) => { setDrawerOpen(false); navigate && navigate(screen); };
+
+  return (
+    <>
+      <div style={{
+        background:'#0b1120', padding:'0 16px',
+        display:'flex', alignItems:'center', gap:'10px',
+        minHeight:'54px', position:'sticky', top:0, zIndex:100,
+        boxShadow:'0 2px 16px rgba(0,0,0,0.4)'
+      }}>
+        {navigate && (
+          <button onClick={()=>setDrawerOpen(true)} title="Menu" style={{
+            background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)',
+            color:'white', width:'34px', height:'34px', borderRadius:'8px',
+            cursor:'pointer', fontSize:'1.15rem',
+            display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0
+          }}>☰</button>
+        )}
+        {onBack && (
+          <button onClick={onBack} style={{
+            background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)',
+            color:'white', width:'34px', height:'34px', borderRadius:'8px',
+            cursor:'pointer', fontSize:'1.1rem',
+            display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0
+          }}>←</button>
+        )}
+        <div style={{flex:1, minWidth:0}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'900', fontSize:'1rem', color:'white', letterSpacing:'2px', textTransform:'uppercase', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{title}</div>
+          {subtitle && <div style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', letterSpacing:'1.5px', textTransform:'uppercase', marginTop:'1px'}}>{subtitle}</div>}
+        </div>
+        {onToggleDark !== undefined && (
+          <button onClick={onToggleDark} title="Toggle theme" style={{
+            background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)',
+            color:'white', width:'34px', height:'34px', borderRadius:'8px',
+            cursor:'pointer', fontSize:'1rem',
+            display:'flex', alignItems:'center', justifyContent:'center'
+          }}>{isDark ? '☀️' : '🌙'}</button>
+        )}
+        {onLogout && (
+          <button onClick={onLogout} style={{
+            background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)',
+            color:'rgba(255,255,255,0.6)', padding:'6px 12px', borderRadius:'7px',
+            cursor:'pointer', fontFamily:"'Barlow Condensed',sans-serif",
+            fontWeight:'700', fontSize:'0.72rem', letterSpacing:'1px', textTransform:'uppercase'
+          }}>LOG OUT</button>
+        )}
+      </div>
+
+      {/* ── SIDE DRAWER ── */}
+      {navigate && (
+        <>
+          <div onClick={()=>setDrawerOpen(false)} style={{
+            position:'fixed', inset:0, background:'rgba(0,0,0,0.55)',
+            zIndex:999, opacity: drawerOpen?1:0, pointerEvents: drawerOpen?'auto':'none',
+            transition:'opacity 0.22s'
+          }} />
+          <div style={{
+            position:'fixed', top:0, left:0, bottom:0, width:'270px', maxWidth:'82vw',
+            background:'var(--surface)', zIndex:1000,
+            transform: drawerOpen?'translateX(0)':'translateX(-100%)',
+            transition:'transform 0.25s ease',
+            boxShadow:'4px 0 24px rgba(0,0,0,0.35)',
+            overflowY:'auto',
+            display:'flex', flexDirection:'column'
+          }}>
+            <div style={{padding:'18px 16px', background:'#0b1120', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0}}>
+              <div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'900', fontSize:'1.05rem', color:'white', letterSpacing:'2.5px'}}>TASKFLOW</div>
+                <div style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.6rem', color:'rgba(255,255,255,0.4)', letterSpacing:'1.5px', marginTop:'2px'}}>NDS1877</div>
+              </div>
+              <button onClick={()=>setDrawerOpen(false)} title="Close" style={{
+                background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)',
+                color:'white', width:'30px', height:'30px', borderRadius:'7px',
+                cursor:'pointer', fontSize:'0.9rem',
+                display:'flex', alignItems:'center', justifyContent:'center'
+              }}>✕</button>
+            </div>
+            <div style={{padding:'8px 0', flex:1}}>
+              {menuItems.map(item => {
+                const active = currentScreen===item.screen;
+                return (
+                  <div key={item.screen} onClick={()=>go(item.screen)} style={{
+                    padding:'13px 18px',
+                    display:'flex', alignItems:'center', gap:'12px',
+                    cursor:'pointer',
+                    background: active ? 'var(--surface2)' : 'transparent',
+                    borderLeft: active ? '3px solid #0891b2' : '3px solid transparent',
+                    fontFamily:"'Barlow Condensed',sans-serif",
+                    fontWeight: active ? '900' : '700',
+                    fontSize:'0.88rem',
+                    letterSpacing:'1.5px',
+                    color: active ? '#0891b2' : 'var(--fg)',
+                    userSelect:'none'
+                  }}>
+                    <span style={{fontSize:'1.1rem'}}>{item.icon}</span>
+                    <span>{item.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function EmptyState({ icon, text }) {
+  return (
+    <div style={{textAlign:'center', padding:'48px 20px', color:'var(--fg3)'}}>
+      <div style={{fontSize:'2rem', marginBottom:'10px'}}>{icon||'—'}</div>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif", letterSpacing:'1.5px', textTransform:'uppercase', fontSize:'0.82rem', fontWeight:'700'}}>{text}</div>
+    </div>
+  );
+}
+
+function Toast({ msg, type, onClose }) {
+  useEffect(() => { if (msg) { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); } }, [msg]);
+  if (!msg) return null;
+  const cfg = { success:['#059669','✓'], error:['#dc2626','✕'], info:['#3b82f6','ℹ'] };
+  const [color, icon] = cfg[type] || cfg.info;
+  return (
+    <div onClick={onClose} style={{
+      position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)',
+      background:color, color:'white', padding:'11px 22px', borderRadius:'50px',
+      fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700',
+      letterSpacing:'1.5px', textTransform:'uppercase', fontSize:'0.82rem',
+      zIndex:9999, boxShadow:`0 8px 30px ${color}55`,
+      animation:'slideUp 0.2s ease', maxWidth:'88vw',
+      cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', whiteSpace:'nowrap'
+    }}>
+      <span style={{opacity:0.8}}>{icon}</span> {msg}
+    </div>
+  );
+}
+
+function ToggleSwitch({ checked, onChange, label, description, color='#10b981' }) {
+  return (
+    <div onClick={onChange} style={{
+      display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px',
+      padding:'12px 14px',
+      background: checked ? `${color}15` : 'var(--surface2)',
+      borderRadius:'10px', border:`1.5px solid ${checked ? color+'50' : 'var(--border)'}`,
+      cursor:'pointer', transition:'all 0.2s'
+    }}>
+      <div style={{
+        width:'38px', height:'22px',
+        background: checked ? color : 'var(--border)',
+        borderRadius:'11px', position:'relative', flexShrink:0, transition:'background 0.2s'
+      }}>
+        <div style={{
+          position:'absolute', top:'3px',
+          left: checked ? '19px' : '3px',
+          width:'16px', height:'16px',
+          background:'white', borderRadius:'50%',
+          boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s'
+        }}/>
+      </div>
+      <div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700', fontSize:'0.85rem', letterSpacing:'0.8px', textTransform:'uppercase', color: checked ? color : 'var(--fg)'}}>{label}</div>
+        {description && <div style={{fontSize:'0.72rem', color:'var(--fg3)', marginTop:'1px'}}>{description}</div>}
+      </div>
+    </div>
+  );
+}
+
+function SectionHeader({ label, count, action }) {
+  return (
+    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px', marginTop:'6px'}}>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'800', fontSize:'0.82rem', color:'var(--fg2)', letterSpacing:'2px', textTransform:'uppercase'}}>{label}</div>
+      <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+        {count !== undefined && <span className="chip" style={{background:'var(--surface2)', color:'var(--fg2)'}}>{count}</span>}
+        {action}
+      </div>
+    </div>
+  );
+}
+
+function CrudList({ items, onEdit, onDelete, renderItem }) {
+  if (!items.length) return <EmptyState text="No records yet" />;
+  return (
+    <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+      {items.map(item => (
+        <div key={item.id} className="card fade-in" style={{padding:'14px 16px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <div style={{flex:1, minWidth:0}}>{renderItem(item)}</div>
+          <div style={{display:'flex', gap:'6px', marginLeft:'12px', flexShrink:0}}>
+            <button onClick={() => onEdit(item)} style={{...S.btnSmall, background:'#eff6ff', color:'#2563eb'}}>EDIT</button>
+            <button onClick={() => onDelete(item)} style={{...S.btnSmall, background:'#fef2f2', color:'#dc2626'}}>DEL</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FormCard({ children, style }) {
+  return <div className="card" style={{padding:'20px', marginBottom:'16px', ...style}}>{children}</div>;
+}
+
+function Divider({ label }) {
+  return (
+    <div style={{display:'flex', alignItems:'center', gap:'10px', margin:'8px 0 16px'}}>
+      <div style={{flex:1, height:'1px', background:'var(--border)'}}/>
+      {label && <div style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.62rem', color:'var(--fg3)', letterSpacing:'2px', textTransform:'uppercase', whiteSpace:'nowrap'}}>{label}</div>}
+      <div style={{flex:1, height:'1px', background:'var(--border)'}}/>
+    </div>
+  );
+}
+
+// ══════════════════════════════════
+//  QUICK ADD MODAL
+// ══════════════════════════════════
+function QuickAddModal({ ctx, onClose }) {
+  const { businesses, departments, refreshData, showToast } = ctx;
+  const blank = { name:'', businessId:'', departmentId:'', rank:'1', deadline:'09:00', repeatType:'everyday', startDate:todayStr(), specificDates:[], intervalDays:1, active:true };
+  const [form, setForm] = useState(blank);
+  const [saving, setSaving] = useState(false);
+  const nameRef = useRef();
+
+  useEffect(() => { setTimeout(() => nameRef.current?.focus(), 120); }, []);
+
+  const filteredDepts = departments.filter(d => d.businessId === form.businessId);
+
+  const save = async () => {
+    if (!form.name.trim() || !form.businessId || !form.departmentId) {
+      showToast('Name · Business · Dept required', 'error'); return;
+    }
+    setSaving(true);
+    try {
+      await db.collection('tasks').add({ ...form, name:form.name.trim().toUpperCase(), createdAt:new Date(), updatedAt:new Date() });
+      await refreshData();
+      showToast('Task created!', 'success');
+      onClose();
+    } catch(e) { showToast('Error', 'error'); }
+    setSaving(false);
+  };
+
+
+
+  const REPEATS = [
+    { v:'everyday', l:'EVERY DAY' },
+    { v:'specific', l:'SPECIFIC'  },
+    { v:'afterX',   l:'EVERY X DAYS' },
+  ];
+
+  return (
+    <div style={{
+      position:'fixed', inset:0, zIndex:500,
+      background:'rgba(0,0,0,0.65)', backdropFilter:'blur(4px)',
+      display:'flex', alignItems:'flex-end', justifyContent:'center'
+    }} onClick={e => e.target===e.currentTarget && onClose()}>
+      <div style={{
+        background:'var(--surface)', width:'100%', maxWidth:'600px',
+        borderRadius:'20px 20px 0 0',
+        animation:'sheetUp 0.3s ease', maxHeight:'92vh', overflowY:'auto'
+      }}>
+        {/* Handle */}
+        <div style={{padding:'14px', display:'flex', justifyContent:'center', flexShrink:0}}>
+          <div style={{width:'40px', height:'4px', background:'var(--border)', borderRadius:'2px'}}/>
+        </div>
+        <div style={{padding:'0 20px 36px'}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'900', fontSize:'1.3rem', letterSpacing:'3px', color:'var(--fg)'}}>
+              ✚ QUICK ADD TASK
+            </div>
+            <button onClick={onClose} style={{background:'var(--surface2)', border:'none', color:'var(--fg3)', width:'30px', height:'30px', borderRadius:'8px', cursor:'pointer', fontSize:'1.1rem'}}>×</button>
+          </div>
+
+          {/* Task Name — big */}
+          <div style={{marginBottom:'16px'}}>
+            <input
+              ref={nameRef}
+              value={form.name}
+              onChange={e => setForm({...form, name:e.target.value.toUpperCase()})}
+              placeholder="TASK NAME..."
+              onKeyDown={e => e.key==='Enter' && save()}
+              style={{
+                ...S.input,
+                fontSize:'1.1rem', fontWeight:'700',
+                fontFamily:"'Barlow Condensed',sans-serif",
+                letterSpacing:'1px', padding:'14px 16px',
+                border:'2px solid var(--border)'
+              }}
+            />
+          </div>
+
+          {/* Business + Dept */}
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'4px'}}>
+            <Select value={form.businessId} onChange={e => setForm({...form, businessId:e.target.value, departmentId:''})}>
+              <option value="">Business…</option>
+              {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </Select>
+            <Select value={form.departmentId} onChange={e => setForm({...form, departmentId:e.target.value})}>
+              <option value="">Department…</option>
+              {filteredDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </Select>
+          </div>
+
+          {/* Deadline + Rank */}
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'16px'}}>
+            <div>
+              <label style={S.label}>Deadline</label>
+              <input type="time" value={form.deadline} onChange={e => setForm({...form, deadline:e.target.value})} style={S.input} />
+            </div>
+            <Input label="Rank #" type="number" min="1" value={form.rank} onChange={e=>setForm({...form,rank:e.target.value})} hint="1 = shown first" prefix="#" />
+          </div>
+
+          {/* Repeat */}
+          <div style={{marginBottom:'14px'}}>
+            <label style={S.label}>Repeat</label>
+            <div style={{display:'flex', gap:'6px'}}>
+              {REPEATS.map(r => (
+                <div key={r.v} onClick={() => setForm({...form, repeatType:r.v})} style={{
+                  flex:1, padding:'9px 4px', textAlign:'center', borderRadius:'8px', cursor:'pointer',
+                  background: form.repeatType===r.v ? '#0b1120' : 'var(--surface2)',
+                  color: form.repeatType===r.v ? 'white' : 'var(--fg2)',
+                  fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700',
+                  fontSize:'0.65rem', letterSpacing:'0.5px',
+                  border:`1.5px solid ${form.repeatType===r.v ? '#0b1120' : 'var(--border)'}`,
+                }}>{r.l}</div>
+              ))}
+            </div>
+          </div>
+
+          {(form.repeatType==='everyday' || form.repeatType==='afterX') && (
+            <div style={{display:'grid', gridTemplateColumns:form.repeatType==='afterX'?'1fr 1fr':'1fr', gap:'0 12px'}}>
+              {form.repeatType==='afterX' && (
+                <Input label="Every X Days" type="number" min="1" value={form.intervalDays} onChange={e=>setForm({...form,intervalDays:parseInt(e.target.value)||1})} />
+              )}
+              <Input label="Start Date" type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})} />
+            </div>
+          )}
+          {form.repeatType==='specific' && (
+            <div style={{padding:'10px 14px', background:'var(--surface2)', borderRadius:'9px', border:'1.5px solid var(--border)', marginBottom:'14px'}}>
+              <div style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.68rem', color:'var(--fg3)'}}>
+                For specific dates, use the full TASK form from the dashboard.
+              </div>
+            </div>
+          )}
+
+          <button onClick={save} disabled={saving} style={{...S.btnAmber, width:'100%', padding:'15px', fontSize:'1rem', letterSpacing:'2px', marginTop:'4px'}}>
+            {saving ? 'SAVING...' : 'CREATE TASK →'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════
+//  MAIN APP
+// ══════════════════════════════════
+function App() {
+  const [currentUser, setCurrentUser] = useState(() => {
+    try { const raw = localStorage.getItem('tf_user'); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  });
+  const [screen, setScreen]           = useState(() => {
+    try {
+      const s = localStorage.getItem('tf_screen');
+      if (s) return s;
+      const raw = localStorage.getItem('tf_user');
+      if (raw) { const u = JSON.parse(raw); return u && u.role === 'staff' ? 'staff' : 'adminDash'; }
+      return 'login';
+    } catch { return 'login'; }
+  });
+  const [navData, setNavData]         = useState(() => {
+    try { const raw = localStorage.getItem('tf_navData'); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  });
+  const [businesses, setBusinesses]   = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [users, setUsers]             = useState([]);
+  const [tasks, setTasks]             = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [toast, setToast]             = useState({ msg:'', type:'info' });
+  const [isDark, setIsDark]           = useState(() => localStorage.getItem('tf_theme') === 'dark');
+
+  const toggleTheme = () => setIsDark(v => {
+    const next = !v;
+    localStorage.setItem('tf_theme', next ? 'dark' : 'light');
+    return next;
+  });
+
+  useEffect(() => {
+    if (isDark) document.documentElement.setAttribute('data-dark','');
+    else         document.documentElement.removeAttribute('data-dark');
+  }, [isDark]);
+
+  const showToast = (msg, type='info') => setToast({ msg, type });
+  const hideToast = () => setToast({ msg:'', type:'info' });
+
+  const refreshData = useCallback(async () => {
+    try {
+      const [bS, dS, uS, tS] = await Promise.all([
+        db.collection('businesses').get(),
+        db.collection('departments').get(),
+        db.collection('users').get(),
+        db.collection('tasks').get(),
+      ]);
+      setBusinesses(bS.docs.map(d => ({ id:d.id, ...d.data() })));
+      setDepartments(dS.docs.map(d => ({ id:d.id, ...d.data() })));
+      setUsers(uS.docs.map(d => ({ id:d.id, ...d.data() })));
+      setTasks(tS.docs.map(d => ({ id:d.id, ...d.data() })));
+    } catch(e) {}
+  }, []);
+
+  useEffect(() => {
+    ensureAuth()
+      .then(() => seedAdmin())
+      .then(() => refreshData())
+      .then(() => setLoading(false))
+      .catch(() => setLoading(false));
+  }, []);
+
+  const navigate = (s, data=null) => {
+    setScreen(s); setNavData(data);
+    try {
+      localStorage.setItem('tf_screen', s);
+      if (data) localStorage.setItem('tf_navData', JSON.stringify(data));
+      else      localStorage.removeItem('tf_navData');
+    } catch {}
+  };
+  const logout = () => {
+    try {
+      localStorage.removeItem('tf_user');
+      localStorage.removeItem('tf_screen');
+      localStorage.removeItem('tf_navData');
+      localStorage.removeItem('tf_staff');
+    } catch {}
+    setCurrentUser(null); setScreen('login'); setNavData(null);
+  };
+
+  if (loading) {
+    return (
+      <div style={{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0b1120', flexDirection:'column', gap:'16px'}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'900', fontSize:'2.4rem', color:'#f59e0b', letterSpacing:'8px'}}>TASKFLOW</div>
+        <div style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.68rem', color:'rgba(255,255,255,0.25)', letterSpacing:'3px'}} className="pulse">INITIALISING...</div>
+      </div>
+    );
+  }
+
+  const ctx = { currentUser, businesses, departments, users, tasks, navigate, refreshData, logout, showToast, navData, isDark, toggleTheme };
+
+  const screens = {
+    login:            <LoginScreen ctx={ctx} setCurrentUser={setCurrentUser} setScreen={setScreen} />,
+    adminDash:        <AdminDashboard ctx={ctx} />,
+    createBusiness:   <CreateBusiness ctx={ctx} />,
+    createDepartment: <CreateDepartment ctx={ctx} />,
+    createUser:       <CreateUser ctx={ctx} />,
+    createTask:       <CreateTask ctx={ctx} />,
+    manageBusiness:   <ManageBusiness ctx={ctx} />,
+    reports:          <Reports ctx={ctx} />,
+    staff:            <StaffDashboard ctx={ctx} />,
+  };
+
+  return (
+    <>
+      {screens[screen] || screens.login}
+      <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />
+    </>
+  );
+}
+
+// ══════════════════════════════════
+//  LOGIN
+// ══════════════════════════════════
+function LoginScreen({ ctx, setCurrentUser, setScreen }) {
+  const [userId, setUserId]     = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [showPw, setShowPw]     = useState(false);
+  const pwRef = useRef();
+
+  const login = async () => {
+    if (!userId.trim() || !password) { setError('Enter User ID and Password'); return; }
+    setLoading(true); setError('');
+    try {
+      const snap = await db.collection('users')
+        .where('userId','==',userId.trim().toLowerCase())
+        .where('password','==',password)
+        .limit(1).get();
+      if (snap.empty) { setError('Invalid credentials'); setLoading(false); return; }
+      const user = { id:snap.docs[0].id, ...snap.docs[0].data() };
+      if (user.disabled) { setError('Account disabled. Contact admin.'); setLoading(false); return; }
+      setCurrentUser(user);
+      try { localStorage.setItem('tf_user', JSON.stringify(user)); } catch {}
+      const dest = user.role === 'staff' ? 'staff' : 'adminDash';
+      setScreen(dest);
+      try { localStorage.setItem('tf_screen', dest); localStorage.removeItem('tf_navData'); } catch {}
+    } catch(e) { setError('Connection error. Check Firebase config.'); }
+    setLoading(false);
+  };
+
+  const iStyle = { ...S.input, background:'rgba(255,255,255,0.06)', border:'1.5px solid rgba(255,255,255,0.1)', color:'white', fontSize:'1rem' };
+
+  return (
+    <div style={{minHeight:'100vh', background:'#0b1120', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px', position:'relative', overflow:'hidden'}}>
+      <div style={{position:'absolute',inset:0,backgroundImage:'repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,0.025) 39px,rgba(255,255,255,0.025) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,0.025) 39px,rgba(255,255,255,0.025) 40px)',pointerEvents:'none'}}/>
+      <div style={{position:'absolute',top:'-20%',left:'50%',transform:'translateX(-50%)',width:'60vw',height:'40vw',background:'radial-gradient(ellipse,rgba(245,158,11,0.12) 0%,transparent 70%)',pointerEvents:'none'}}/>
+      <div style={{width:'100%', maxWidth:'360px', position:'relative'}}>
+        <div style={{textAlign:'center', marginBottom:'36px'}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'900', fontSize:'2.6rem', color:'#f59e0b', letterSpacing:'8px', lineHeight:1}}>TASKFLOW <span style={{fontSize:'1.3rem', letterSpacing:'4px', color:'rgba(245,158,11,0.6)'}}>NDC1877</span></div>
+        </div>
+        <div style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'16px', padding:'28px 24px', backdropFilter:'blur(20px)'}}>
+          <div style={{marginBottom:'16px'}}>
+            <label style={{...S.label, color:'rgba(255,255,255,0.35)'}}>USER ID</label>
+            <input value={userId} onChange={e=>setUserId(e.target.value)} onKeyDown={e=>e.key==='Enter'&&pwRef.current.focus()} placeholder="enter user id" autoCapitalize="none" style={iStyle} />
+          </div>
+          <div style={{marginBottom:'10px'}}>
+            <label style={{...S.label, color:'rgba(255,255,255,0.35)'}}>PASSWORD</label>
+            <div style={{position:'relative'}}>
+              <input ref={pwRef} type={showPw?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==='Enter'&&login()} placeholder="••••••••" style={{...iStyle, paddingRight:'44px'}} />
+              <button onClick={()=>setShowPw(v=>!v)} tabIndex={-1} style={{position:'absolute',right:'12px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'rgba(255,255,255,0.35)',cursor:'pointer',display:'flex',alignItems:'center',padding:'4px'}}>
+                {showPw
+                  ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                }
+              </button>
+            </div>
+          </div>
+          {error && <div style={{color:'#f87171', fontSize:'0.78rem', fontFamily:"'IBM Plex Mono',monospace", marginBottom:'14px', padding:'9px 12px', background:'rgba(239,68,68,0.1)', borderRadius:'8px', border:'1px solid rgba(239,68,68,0.2)'}}>{error}</div>}
+          <button onClick={login} disabled={loading} style={{...S.btnAmber, width:'100%', padding:'15px', fontSize:'1rem', letterSpacing:'3px', marginTop:'4px', opacity:loading?0.7:1}}>
+            {loading ? 'LOGGING IN...' : 'LOGIN →'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════
+//  ADMIN DASHBOARD
+// ══════════════════════════════════
+function AdminDashboard({ ctx }) {
+  const { currentUser, navigate, logout, tasks, departments, businesses, isDark, toggleTheme } = ctx;
+
+  const tiles = [
+    { step:'01', icon:'🏢', label:'CREATE BUSINESS',   screen:'createBusiness',   color:'#0891b2', border:'#bae6fd' },
+    { step:'02', icon:'🏬', label:'CREATE DEPARTMENT', screen:'createDepartment', color:'#7c3aed', border:'#ddd6fe' },
+    { step:'03', icon:'👤', label:'CREATE USER',       screen:'createUser',       color:'#6366f1', border:'#c7d2fe' },
+    { step:'04', icon:'✅', label:'CREATE TASK',       screen:'createTask',       color:'#059669', border:'#a7f3d0' },
+    { step:'05', icon:'📊', label:'MANAGE BUSINESS',   screen:'manageBusiness',   color:'#dc2626', border:'#fecaca' },
+    { step:'06', icon:'📋', label:'REPORTS',           screen:'reports',          color:'#0f766e', border:'#99f6e4' },
+  ];
+
+  const todayTasks = tasks.filter(taskActiveToday);
+  const dateStr    = new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}).toUpperCase();
+
+  return (
+    <div style={S.page}>
+      <AdminHeader title="TASKFLOW NDC1877" onLogout={logout} isDark={isDark} onToggleDark={toggleTheme} navigate={navigate} currentScreen="adminDash" />
+      <div style={S.section} className="desktop-grid">
+
+        {/* Greeting */}
+        <div style={{background:'linear-gradient(135deg,#0b1120 0%,#1c2a3a 100%)', borderRadius:'14px', padding:'20px', marginBottom:'16px', position:'relative', overflow:'hidden'}}>
+          <div style={{position:'absolute',right:'-10px',top:'-10px',fontSize:'5rem',opacity:0.05}}>⚡</div>
+          <div style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.62rem', color:'rgba(255,255,255,0.3)', letterSpacing:'2px', marginBottom:'4px'}}>{dateStr}</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'900', fontSize:'1.4rem', color:'white', letterSpacing:'2px'}}>
+            HEY, {(currentUser?.name||'ADMIN').toUpperCase()} 👋
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="stat-grid" style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'10px', marginBottom:'20px'}}>
+          {[
+            { label:'BUSINESSES',   value:businesses.length,  color:'#0891b2' },
+            { label:'DEPARTMENTS',  value:departments.length, color:'#7c3aed' },
+            { label:"TODAY'S TASKS",value:todayTasks.length,  color:'#059669' },
+          ].map(s => (
+            <div key={s.label} className="card" style={{padding:'13px 14px'}}>
+              <div style={{fontFamily:"'IBM Plex Mono',monospace", fontWeight:'600', fontSize:'1.5rem', color:s.color, lineHeight:1}}>{s.value}</div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontSize:'0.65rem', fontWeight:'700', color:'var(--fg3)', letterSpacing:'1px', textTransform:'uppercase', marginTop:'4px'}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tiles */}
+        <div className="tile-grid" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px'}}>
+          {tiles.slice(0,4).map(t => <TileButton key={t.screen} tile={t} onClick={() => navigate(t.screen)} />)}
+        </div>
+        <div className="tile-grid" style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'80px'}}>
+          {tiles.slice(4).map(t => <TileButton key={t.screen} tile={t} onClick={() => navigate(t.screen)} compact />)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TileButton({ tile, onClick, compact }) {
+  return (
+    <div onClick={onClick} className="card tile-hover" style={{
+      padding: compact ? '16px 12px' : '20px 16px',
+      textAlign:'center', cursor:'pointer',
+      borderTop:`3px solid ${tile.border}`,
+      userSelect:'none', position:'relative', overflow:'hidden'
+    }}>
+      <div style={{position:'absolute',top:'8px',left:'10px',fontFamily:"'IBM Plex Mono',monospace",fontSize:'0.58rem',color:'var(--fg3)',fontWeight:'600'}}>{tile.step}</div>
+      <div style={{fontSize: compact?'1.5rem':'1.8rem', marginBottom:'8px'}}>{tile.icon}</div>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'800', fontSize:compact?'0.78rem':'0.85rem', color:tile.color, letterSpacing:'1.5px', textTransform:'uppercase'}}>{tile.label}</div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════
+//  CREATE BUSINESS
+// ══════════════════════════════════
+function CreateBusiness({ ctx }) {
+  const { businesses, navigate, refreshData, showToast, logout, isDark, toggleTheme } = ctx;
+  const [name, setName]       = useState('');
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving]   = useState(false);
+
+  const save = async () => {
+    if (!name.trim()) { showToast('Enter business name', 'error'); return; }
+    setSaving(true);
+    try {
+      if (editing) { await db.collection('businesses').doc(editing.id).update({ name:name.trim() }); showToast('Updated','success'); }
+      else { await db.collection('businesses').add({ name:name.trim(), createdAt:new Date() }); showToast('Business created','success'); }
+      await refreshData(); setName(''); setEditing(null);
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+    setSaving(false);
+  };
+
+  const del = async (item) => {
+    if (!confirm(`Delete "${item.name}"?`)) return;
+    await db.collection('businesses').doc(item.id).delete();
+    await refreshData(); showToast('Deleted','success');
+  };
+
+  return (
+    <div style={S.page}>
+      <AdminHeader title="CREATE BUSINESS" subtitle="Step 01" onBack={() => navigate('adminDash')} onLogout={logout} isDark={isDark} onToggleDark={toggleTheme} navigate={navigate} currentScreen="createBusiness" />
+      <div style={S.section} className="desktop-grid">
+        <FormCard>
+          <Input label="Business Name" value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Narayandas Sweets" onKeyDown={e=>e.key==='Enter'&&save()} prefix="🏢" />
+          <div style={{display:'flex', gap:'10px'}}>
+            <button onClick={save} disabled={saving} style={{...S.btnPrimary,flex:1}}>{saving?'SAVING...':editing?'UPDATE':'SAVE'}</button>
+            {editing && <button onClick={()=>{setEditing(null);setName('');}} style={S.btnGhost}>CANCEL</button>}
+          </div>
+        </FormCard>
+        <SectionHeader label="All Businesses" count={businesses.length} />
+        <CrudList items={businesses}
+          onEdit={i=>{setEditing(i);setName(i.name)}}
+          onDelete={del}
+          renderItem={b=><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:'800',fontSize:'1rem',letterSpacing:'1px',color:'var(--fg)'}}>{b.name.toUpperCase()}</div>} />
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════
+//  CREATE DEPARTMENT
+// ══════════════════════════════════
+function CreateDepartment({ ctx }) {
+  const { departments, businesses, navigate, refreshData, showToast, logout, isDark, toggleTheme } = ctx;
+  const blank = { name:'', businessId:'' };
+  const [form, setForm]       = useState(blank);
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving]   = useState(false);
+
+  const save = async () => {
+    if (!form.name.trim() || !form.businessId) { showToast('Fill all fields','error'); return; }
+    setSaving(true);
+    try {
+      if (editing) { await db.collection('departments').doc(editing.id).update(form); showToast('Updated','success'); }
+      else { await db.collection('departments').add({...form,name:form.name.trim(),createdAt:new Date()}); showToast('Created','success'); }
+      await refreshData(); setForm(blank); setEditing(null);
+    } catch(e) { showToast('Error','error'); }
+    setSaving(false);
+  };
+
+  const del = async (item) => {
+    if (!confirm(`Delete "${item.name}"?`)) return;
+    await db.collection('departments').doc(item.id).delete();
+    await refreshData(); showToast('Deleted','success');
+  };
+
+  const getBizName = id => businesses.find(b=>b.id===id)?.name||'?';
+
+  return (
+    <div style={S.page}>
+      <AdminHeader title="CREATE DEPARTMENT" subtitle="Step 02" onBack={() => navigate('adminDash')} onLogout={logout} isDark={isDark} onToggleDark={toggleTheme} navigate={navigate} currentScreen="createDepartment" />
+      <div style={S.section} className="desktop-grid">
+        <FormCard>
+          <Select label="Select Business" value={form.businessId} onChange={e=>setForm({...form,businessId:e.target.value})}>
+            <option value="">— Choose Business —</option>
+            {businesses.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+          </Select>
+          <Input label="Department Name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. Accounts, Kitchen" prefix="🏬" />
+          <div style={{display:'flex', gap:'10px'}}>
+            <button onClick={save} disabled={saving} style={{...S.btnPrimary,flex:1}}>{saving?'SAVING...':editing?'UPDATE':'SAVE'}</button>
+            {editing && <button onClick={()=>{setEditing(null);setForm(blank)}} style={S.btnGhost}>CANCEL</button>}
+          </div>
+        </FormCard>
+        <SectionHeader label="All Departments" count={departments.length} />
+        <CrudList items={departments}
+          onEdit={i=>{setEditing(i);setForm({name:i.name,businessId:i.businessId})}}
+          onDelete={del}
+          renderItem={d=>(
+            <div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:'800',fontSize:'0.95rem',color:'var(--fg)'}}>{d.name.toUpperCase()}</div>
+              <div style={{fontSize:'0.72rem',color:'var(--fg3)',marginTop:'2px',fontFamily:"'IBM Plex Mono',monospace"}}>{getBizName(d.businessId)}</div>
+            </div>
+          )} />
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════
+//  CREATE USER
+// ══════════════════════════════════
+function CreateUser({ ctx }) {
+  const { users, businesses, departments, navigate, refreshData, showToast, logout, isDark, toggleTheme } = ctx;
+  const blank = { userId:'', password:'', role:'staff', businessId:'', departmentId:'', name:'', contact:'', dateOfJoining:'', disabled:false };
+  const [form, setForm]       = useState(blank);
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving]   = useState(false);
+  const [showPw, setShowPw]   = useState(false);
+
+  const isAdmin       = form.role === 'admin';
+  const filteredDepts = departments.filter(d => d.businessId === form.businessId);
+  const staffUsers    = users.filter(u => u.role === 'staff');
+  const adminUsers    = users.filter(u => u.role === 'admin');
+
+  const save = async () => {
+    if (!form.userId||!form.password||!form.name) { showToast('Fill required fields','error'); return; }
+    if (!isAdmin&&(!form.businessId||!form.departmentId)) { showToast('Assign business & dept for staff','error'); return; }
+    setSaving(true);
+    try {
+      const data = { ...form, userId:form.userId.toLowerCase().trim(), updatedAt:new Date(), ...(isAdmin?{businessId:'',departmentId:''}:{}) };
+      if (editing) { await db.collection('users').doc(editing.id).update(data); showToast('Updated','success'); }
+      else {
+        const dup = await db.collection('users').where('userId','==',data.userId).limit(1).get();
+        if (!dup.empty) { showToast('User ID already exists','error'); setSaving(false); return; }
+        await db.collection('users').add({...data,createdAt:new Date()}); showToast('User created','success');
+      }
+      await refreshData(); setForm(blank); setEditing(null);
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+    setSaving(false);
+  };
+
+  const del = async (item) => {
+    if (item.userId==='admin') { showToast('Cannot delete default admin','error'); return; }
+    if (!confirm(`Delete "${item.name}"?`)) return;
+    await db.collection('users').doc(item.id).delete();
+    await refreshData(); showToast('Deleted','success');
+  };
+
+  const getBizName  = id => businesses.find(b=>b.id===id)?.name||'—';
+  const getDeptName = id => departments.find(d=>d.id===id)?.name||'—';
+
+  return (
+    <div style={S.page}>
+      <AdminHeader title="CREATE USER" subtitle="Step 03" onBack={() => navigate('adminDash')} onLogout={logout} isDark={isDark} onToggleDark={toggleTheme} navigate={navigate} currentScreen="createUser" />
+      <div style={S.section} className="desktop-grid">
+        <FormCard>
+          <div style={{marginBottom:'16px'}}>
+            <label style={S.label}>Access Role</label>
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px'}}>
+              {['staff','admin'].map(r => (
+                <div key={r} onClick={() => setForm({...form,role:r,businessId:'',departmentId:''})} style={{
+                  padding:'12px', borderRadius:'10px',
+                  border:`2px solid ${form.role===r?(r==='admin'?'#f59e0b':'#6366f1'):'var(--border)'}`,
+                  background: form.role===r?(r==='admin'?'#fffbeb':'#eef2ff'):'var(--surface2)',
+                  cursor:'pointer', textAlign:'center', transition:'all 0.15s'
+                }}>
+                  <div style={{fontSize:'1.4rem', marginBottom:'4px'}}>{r==='admin'?'🔑':'👷'}</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'800', fontSize:'0.85rem', letterSpacing:'1px', color:form.role===r?(r==='admin'?'#d97706':'#4f46e5'):'var(--fg3)'}}>{r.toUpperCase()}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Divider label="Credentials" />
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 12px'}}>
+            <Input label="User ID *" value={form.userId} onChange={e=>setForm({...form,userId:e.target.value})} placeholder="staff01" hint="lowercase, no spaces" />
+            <div style={{marginBottom:'14px'}}>
+              <label style={S.label}>Password *</label>
+              <div style={{position:'relative'}}>
+                <input type={showPw?'text':'password'} value={form.password} onChange={e=>setForm({...form,password:e.target.value})} placeholder="set password" style={{...S.input,paddingRight:'40px'}} />
+                <button onClick={()=>setShowPw(!showPw)} style={{position:'absolute',right:'10px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:'0.85rem',color:'var(--fg3)'}}>
+                  {showPw?'🙈':'👁'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <Divider label="Personal Info" />
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 12px'}}>
+            <Input label="Full Name *" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="full name" />
+            <Input label="Contact" value={form.contact} onChange={e=>setForm({...form,contact:e.target.value})} placeholder="phone number" prefix="📞" />
+          </div>
+          <Input label="Date of Joining" type="date" value={form.dateOfJoining} onChange={e=>setForm({...form,dateOfJoining:e.target.value})} />
+
+          {!isAdmin && (
+            <>
+              <Divider label="Assignment" />
+              <Select label="Assign Business *" value={form.businessId} onChange={e=>setForm({...form,businessId:e.target.value,departmentId:''})}>
+                <option value="">— Select Business —</option>
+                {businesses.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+              </Select>
+              <Select label="Assign Department *" value={form.departmentId} onChange={e=>setForm({...form,departmentId:e.target.value})}>
+                <option value="">— Select Department —</option>
+                {filteredDepts.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+              </Select>
+            </>
+          )}
+
+          <ToggleSwitch checked={form.disabled} onChange={()=>setForm({...form,disabled:!form.disabled})} label="Account Disabled" description="User cannot log in when disabled" color="#dc2626" />
+
+          <div style={{display:'flex', gap:'10px', marginTop:'4px'}}>
+            <button onClick={save} disabled={saving} style={{...S.btnPrimary,flex:1}}>{saving?'SAVING...':editing?'UPDATE':'CREATE USER'}</button>
+            {editing && <button onClick={()=>{setEditing(null);setForm(blank)}} style={S.btnGhost}>CANCEL</button>}
+          </div>
+        </FormCard>
+
+        {adminUsers.length > 0 && (
+          <>
+            <SectionHeader label="Admin Users" count={adminUsers.length} />
+            <CrudList items={adminUsers}
+              onEdit={i=>{setEditing(i);setForm({userId:i.userId,password:i.password,role:'admin',businessId:'',departmentId:'',name:i.name,contact:i.contact||'',dateOfJoining:i.dateOfJoining||'',disabled:!!i.disabled})}}
+              onDelete={del}
+              renderItem={u=>(
+                <div style={{display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap'}}>
+                  <span>🔑</span>
+                  <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:'800',fontSize:'1rem',color:'var(--fg)'}}>{u.name.toUpperCase()}</span>
+                  <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:'0.7rem',color:'#d97706'}}>@{u.userId}</span>
+                  {u.disabled && <span className="chip" style={{background:'#fef2f2',color:'#dc2626'}}>DISABLED</span>}
+                </div>
+              )} />
+          </>
+        )}
+
+        <div style={{marginTop: adminUsers.length > 0 ? '16px' : 0}}>
+          <SectionHeader label="Staff Users" count={staffUsers.length} />
+          <CrudList items={staffUsers}
+            onEdit={i=>{setEditing(i);setForm({userId:i.userId,password:i.password,role:'staff',businessId:i.businessId,departmentId:i.departmentId,name:i.name,contact:i.contact||'',dateOfJoining:i.dateOfJoining||'',disabled:!!i.disabled})}}
+            onDelete={del}
+            renderItem={u=>(
+              <div>
+                <div style={{display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap'}}>
+                  <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:'800',fontSize:'0.95rem',color:'var(--fg)'}}>{u.name.toUpperCase()}</span>
+                  <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:'0.68rem',color:'#6366f1'}}>@{u.userId}</span>
+                  {u.disabled && <span className="chip" style={{background:'#fef2f2',color:'#dc2626'}}>DISABLED</span>}
+                </div>
+                <div style={{fontSize:'0.72rem',color:'var(--fg3)',marginTop:'2px',fontFamily:"'IBM Plex Mono',monospace"}}>{getBizName(u.businessId)} › {getDeptName(u.departmentId)}</div>
+              </div>
+            )} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════
+//  CREATE TASK
+// ══════════════════════════════════
+function CreateTask({ ctx }) {
+  const { tasks, businesses, departments, navigate, refreshData, showToast, logout, isDark, toggleTheme } = ctx;
+  const blank = { name:'', businessId:'', departmentId:'', rank:'1', deadline:'08:00', repeatType:'everyday', startDate:todayStr(), specificDates:[], intervalDays:2, active:true };
+  const [form, setForm]       = useState(blank);
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving]   = useState(false);
+  const [addingDate, setAddingDate] = useState('');
+
+  const filteredDepts = departments.filter(d => d.businessId === form.businessId);
+
+  const save = async () => {
+    if (!form.name||!form.businessId||!form.departmentId) { showToast('Fill required fields','error'); return; }
+    setSaving(true);
+    try {
+      const data = { ...form, name:form.name.trim().toUpperCase(), updatedAt:new Date() };
+      if (editing) { await db.collection('tasks').doc(editing.id).update(data); showToast('Task updated','success'); }
+      else { await db.collection('tasks').add({...data,createdAt:new Date()}); showToast('Task created','success'); }
+      await refreshData(); setForm(blank); setEditing(null);
+    } catch(e) { showToast('Error','error'); }
+    setSaving(false);
+  };
+
+  const del = async (item) => {
+    if (!confirm(`Delete "${item.name}"?`)) return;
+    await db.collection('tasks').doc(item.id).delete();
+    await refreshData(); showToast('Deleted','success');
+  };
+
+  const addDate = () => {
+    if (!addingDate||form.specificDates.includes(addingDate)) return;
+    setForm({...form,specificDates:[...form.specificDates,addingDate].sort()});
+    setAddingDate('');
+  };
+
+  const [taskSearch, setTaskSearch] = useState('');
+  const [filterBiz,  setFilterBiz]  = useState('');
+  const [filterDept, setFilterDept] = useState('');
+  const [sortBy,     setSortBy]     = useState('rank');
+
+  const getBizName  = id => businesses.find(b=>b.id===id)?.name||'?';
+  const getDeptName = id => departments.find(d=>d.id===id)?.name||'?';
+  const filterDepts = filterBiz ? departments.filter(d=>d.businessId===filterBiz) : departments;
+
+  const filtered = [...tasks]
+    .filter(t => !taskSearch || t.name.toLowerCase().includes(taskSearch.toLowerCase()))
+    .filter(t => !filterBiz  || t.businessId===filterBiz)
+    .filter(t => !filterDept || t.departmentId===filterDept)
+    .sort((a,b)=>{
+      if(sortBy==='rank')     return (parseInt(a.rank)||99)-(parseInt(b.rank)||99);
+      if(sortBy==='name')     return a.name.localeCompare(b.name);
+      if(sortBy==='deadline') return (a.deadline||'').localeCompare(b.deadline||'');
+      if(sortBy==='biz')      return getBizName(a.businessId).localeCompare(getBizName(b.businessId));
+      return 0;
+    });
+
+  return (
+    <div style={S.page}>
+      <AdminHeader title="CREATE TASK" subtitle="Step 04" onBack={() => navigate('adminDash')} onLogout={logout} isDark={isDark} onToggleDark={toggleTheme} navigate={navigate} currentScreen="createTask" />
+      <div style={S.section} className="desktop-grid">
+        <FormCard>
+          <Input label="Task Name *" value={form.name} onChange={e=>setForm({...form,name:e.target.value.toUpperCase()})} placeholder="TASK NAME" />
+          <Select label="Select Business *" value={form.businessId} onChange={e=>setForm({...form,businessId:e.target.value,departmentId:''})}>
+            <option value="">— Select Business —</option>
+            {businesses.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+          </Select>
+          <Select label="Select Department *" value={form.departmentId} onChange={e=>setForm({...form,departmentId:e.target.value})}>
+            <option value="">— Select Department —</option>
+            {filteredDepts.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+          </Select>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 12px'}}>
+            <Input label="Rank / Order" type="number" min="1" value={form.rank} onChange={e=>setForm({...form,rank:e.target.value})} hint="1 = top priority" prefix="#" />
+            <Input label="Deadline Time" type="time" value={form.deadline} onChange={e=>setForm({...form,deadline:e.target.value})} />
+          </div>
+
+          <Divider label="Schedule" />
+          <Select label="Repeat Frequency" value={form.repeatType} onChange={e=>setForm({...form,repeatType:e.target.value})}>
+            <option value="everyday">Every Day</option>
+            <option value="specific">Specific Days Only</option>
+            <option value="afterX">Every X Days</option>
+          </Select>
+
+          {form.repeatType==='everyday' && (
+            <Input label="Start Date" type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})} />
+          )}
+          {form.repeatType==='specific' && (
+            <div style={{marginBottom:'14px'}}>
+              <label style={S.label}>Select Specific Dates</label>
+              <div style={{display:'flex', gap:'8px', marginBottom:'8px'}}>
+                <input type="date" value={addingDate} onChange={e=>setAddingDate(e.target.value)} style={{...S.input,flex:1}} />
+                <button onClick={addDate} style={{...S.btnPrimary,padding:'11px 16px',flexShrink:0}}>+ ADD</button>
+              </div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:'6px'}}>
+                {form.specificDates.map(d=>(
+                  <span key={d} onClick={()=>setForm({...form,specificDates:form.specificDates.filter(x=>x!==d)})}
+                    style={{background:'#e0e7ff',color:'#4338ca',padding:'5px 12px',borderRadius:'20px',fontSize:'0.72rem',fontFamily:"'IBM Plex Mono',monospace",cursor:'pointer'}}>
+                    {d} ×
+                  </span>
+                ))}
+                {form.specificDates.length===0 && <div style={{fontSize:'0.72rem',color:'var(--fg3)',fontFamily:"'IBM Plex Mono',monospace"}}>No dates added yet</div>}
+              </div>
+            </div>
+          )}
+          {form.repeatType==='afterX' && (
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 12px'}}>
+              <Input label="Every X Days" type="number" min="1" value={form.intervalDays} onChange={e=>setForm({...form,intervalDays:parseInt(e.target.value)||1})} />
+              <Input label="Start Date" type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})} />
+            </div>
+          )}
+
+          <ToggleSwitch checked={form.active===false?false:true} onChange={()=>setForm({...form,active:form.active===false?true:false})} label="Task Active" description="Disable to hide from all staff" color="#059669" />
+
+          <div style={{display:'flex', gap:'10px', marginTop:'4px'}}>
+            <button onClick={save} disabled={saving} style={{...S.btnPrimary,flex:1}}>{saving?'SAVING...':editing?'UPDATE TASK':'CREATE TASK'}</button>
+            {editing && <button onClick={()=>{setEditing(null);setForm(blank)}} style={S.btnGhost}>CANCEL</button>}
+          </div>
+        </FormCard>
+
+        <SectionHeader label="All Tasks" count={filtered.length !== tasks.length ? `${filtered.length}/${tasks.length}` : tasks.length} />
+
+        {/* ── FILTER BAR ── */}
+        <div className="card" style={{padding:'12px 14px', marginBottom:'12px'}}>
+          <input
+            value={taskSearch} onChange={e=>setTaskSearch(e.target.value)}
+            placeholder="🔍  SEARCH TASK NAME..."
+            style={{...S.input, marginBottom:'10px', fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'600', letterSpacing:'0.5px', textTransform:'uppercase'}}
+          />
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px'}}>
+            <select value={filterBiz} onChange={e=>{setFilterBiz(e.target.value);setFilterDept('');}} style={{...S.input, margin:0, fontSize:'0.72rem', fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700', letterSpacing:'0.5px'}}>
+              <option value="">ALL BUSINESSES</option>
+              {businesses.map(b=><option key={b.id} value={b.id}>{b.name.toUpperCase()}</option>)}
+            </select>
+            <select value={filterDept} onChange={e=>setFilterDept(e.target.value)} style={{...S.input, margin:0, fontSize:'0.72rem', fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700', letterSpacing:'0.5px'}}>
+              <option value="">ALL DEPTS</option>
+              {filterDepts.map(d=><option key={d.id} value={d.id}>{d.name.toUpperCase()}</option>)}
+            </select>
+            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{...S.input, margin:0, fontSize:'0.72rem', fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700', letterSpacing:'0.5px'}}>
+              <option value="rank">SORT: RANK</option>
+              <option value="name">SORT: NAME</option>
+              <option value="deadline">SORT: TIME</option>
+              <option value="biz">SORT: BUSINESS</option>
+            </select>
+          </div>
+          {(taskSearch||filterBiz||filterDept||sortBy!=='rank') && (
+            <button onClick={()=>{setTaskSearch('');setFilterBiz('');setFilterDept('');setSortBy('rank');}}
+              style={{...S.btnSmall, background:'#fef2f2', color:'#dc2626', marginTop:'8px'}}>✕ CLEAR FILTERS</button>
+          )}
+        </div>
+
+        <CrudList items={filtered}
+          onEdit={i=>{setEditing(i);setForm({name:i.name,businessId:i.businessId,departmentId:i.departmentId,rank:i.rank||'1',deadline:i.deadline||'08:00',repeatType:i.repeatType||'everyday',startDate:i.startDate||todayStr(),specificDates:i.specificDates||[],intervalDays:i.intervalDays||2,active:i.active!==false})}}
+          onDelete={del}
+          renderItem={t=>(
+            <div>
+              <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                <span style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:'600',fontSize:'0.7rem',color:'#6366f1',background:'#eef2ff',padding:'2px 7px',borderRadius:'5px'}}>#{t.rank||'?'}</span>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:'700',fontSize:'0.95rem',color:'var(--fg)'}}>{t.name}</span>
+                {t.active===false && <span className="chip" style={{background:'#f1f5f9',color:'var(--fg3)'}}>INACTIVE</span>}
+              </div>
+              <div style={{fontSize:'0.7rem',color:'var(--fg3)',fontFamily:"'IBM Plex Mono',monospace",marginTop:'3px'}}>{getBizName(t.businessId)} › {getDeptName(t.departmentId)} · ⏰ {t.deadline} · {t.repeatType}{t.repeatType==='afterX'?` (${t.intervalDays}d)`:''}</div>
+            </div>
+          )} />
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════
+//  MANAGE BUSINESS  (flat: biz → dept rows directly)
+// ══════════════════════════════════
+function ManageBusiness({ ctx }) {
+  const { businesses, departments, tasks, currentUser, navigate, isDark, logout, toggleTheme } = ctx;
+  const [level, setLevel]         = useState(0);
+  const [selBiz, setSelBiz]       = useState(null);
+  const [selDept, setSelDept]     = useState(null);
+  const [completions, setCompletions] = useState({});
+  const [loadingComp, setLoadingComp] = useState(false);
+  const [showDone, setShowDone]       = useState(false);
+
+  const loadCompletions = async () => {
+    setLoadingComp(true);
+    const snap = await db.collection('taskCompletions').where('date','==',todayStr()).get();
+    const m = {};
+    snap.docs.forEach(d => { m[d.data().taskId] = {id:d.id,...d.data()}; });
+    setCompletions(m); setLoadingComp(false);
+  };
+
+  useEffect(() => { if (level===1) loadCompletions(); }, [level]);
+
+  const completeTask = async (task) => {
+    if (completions[task.id]) return;
+    await db.collection('taskCompletions').add({ taskId:task.id, date:todayStr(), completedBy:currentUser.name||currentUser.userId, completedAt:new Date(), photoUploaded:false });
+    await loadCompletions();
+  };
+
+  // Level 1: task table
+  if (level===1 && selDept) {
+    const dept      = departments.find(d => d.id===selDept);
+    const biz       = businesses.find(b => b.id===selBiz);
+    const deptTasks = tasks.filter(t => t.businessId===selBiz && t.departmentId===selDept && taskActiveToday(t))
+      .sort((a,b) => (parseInt(a.rank)||99)-(parseInt(b.rank)||99));
+    const doneCount = deptTasks.filter(t => completions[t.id]).length;
+
+    return (
+      <div style={S.page}>
+        <AdminHeader title={dept?.name?.toUpperCase()||'DEPT'} subtitle={biz?.name||''} onBack={() => setLevel(0)} onLogout={logout} isDark={isDark} onToggleDark={toggleTheme} navigate={navigate} currentScreen="manageBusiness" />
+        <div style={S.section} className="desktop-grid">
+          {deptTasks.length > 0 && (
+            <div className="card" style={{padding:'12px 16px', marginBottom:'12px'}}>
+              <div style={{display:'flex', gap:'16px', alignItems:'center', marginBottom:'10px'}}>
+                <div style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.62rem', color:'var(--fg3)', letterSpacing:'1.5px', textTransform:'uppercase'}}>
+                  {new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'}).toUpperCase()}
+                </div>
+                <div style={{marginLeft:'auto', display:'flex', gap:'14px'}}>
+                  <span style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.7rem', textTransform:'uppercase'}}>
+                    <span style={{color:'#f59e0b', fontWeight:'700', fontSize:'0.95rem'}}>{deptTasks.length-doneCount}</span>
+                    <span style={{color:'var(--fg3)'}}> LEFT</span>
+                  </span>
+                  <span style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.7rem', textTransform:'uppercase'}}>
+                    <span style={{color:'#059669', fontWeight:'700', fontSize:'0.95rem'}}>{doneCount}</span>
+                    <span style={{color:'var(--fg3)'}}> DONE</span>
+                  </span>
+                </div>
+              </div>
+              <div style={{height:'4px', background:'var(--border)', borderRadius:'2px', overflow:'hidden'}}>
+                <div style={{height:'100%', width:`${deptTasks.length?doneCount/deptTasks.length*100:0}%`, background:'linear-gradient(90deg,#f59e0b,#10b981)', borderRadius:'2px', transition:'width 0.6s ease'}}/>
+              </div>
+            </div>
+          )}
+          <div style={{display:'flex', justifyContent:'flex-end', marginBottom:'8px'}}>
+            <button onClick={loadCompletions} style={{...S.btnSmall,background:'var(--surface2)',color:'var(--fg2)'}}>
+              {loadingComp?'⟳':'↻'} REFRESH
+            </button>
+          </div>
+          {deptTasks.length===0 ? <EmptyState icon="📅" text="No tasks today" /> : (
+            <>
+              {(() => {
+                const pendTasks = deptTasks.filter(t => !completions[t.id]);
+                const doneT    = deptTasks.filter(t =>  completions[t.id]);
+                return (
+                  <>
+                    {pendTasks.length===0 ? (
+                      <div className="card slide-up" style={{padding:'40px 20px', textAlign:'center', marginBottom:'16px'}}>
+                        <div style={{fontSize:'2.5rem', marginBottom:'10px'}}>✅</div>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'900', fontSize:'1.3rem', color:'#059669', letterSpacing:'4px', textTransform:'uppercase'}}>ALL DONE!</div>
+                        <div style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.64rem', color:'var(--fg3)', marginTop:'6px', letterSpacing:'2px', textTransform:'uppercase'}}>All tasks completed for today</div>
+                      </div>
+                    ) : (
+                      <div className="card" style={{overflow:'hidden', marginBottom:'16px'}}>
+                        <div style={{overflowX:'auto'}}>
+                          <table className="staff-tbl" style={{width:'100%', borderCollapse:'collapse', minWidth:'380px'}}>
+                            <thead>
+                              <tr style={{background:'#0b1120'}}>
+                                {[
+                                  {h:'#',      align:'center', width:'44px'},
+                                  {h:'TASK',   align:'left',   width:'auto'},
+                                  {h:'TIME',   align:'center', width:'90px'},
+                                  {h:'STATUS', align:'center', width:'130px'},
+                                ].map(({h,align,width})=>(
+                                  <th key={h} style={{...S.th, color:'rgba(255,255,255,0.65)', textAlign:align, width}}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {pendTasks.map((task,i) => (
+                                <tr key={task.id}>
+                                  <td style={{...S.td,fontFamily:"'IBM Plex Mono',monospace",fontWeight:'600',color:'#6366f1',textAlign:'center',width:'40px',fontSize:'0.8rem'}}>{task.rank||i+1}</td>
+                                  <td style={{...S.td,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:'700',fontSize:'0.9rem',color:'var(--fg)'}}>{task.name}</td>
+                                  <td style={{...S.td,fontFamily:"'IBM Plex Mono',monospace",fontSize:'0.78rem',color:'#dc2626',whiteSpace:'nowrap',textAlign:'center'}}>{task.deadline}</td>
+                                  <td style={{...S.td,textAlign:'center'}}>
+                                    <button onClick={()=>completeTask(task)} style={{background:'#059669',border:'none',color:'white',padding:'6px 12px',borderRadius:'7px',cursor:'pointer',fontFamily:"'Barlow Condensed',sans-serif",fontWeight:'700',fontSize:'0.75rem',letterSpacing:'1px',textTransform:'uppercase',whiteSpace:'nowrap'}}>
+                                      DONE ✓
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {doneT.length > 0 && (
+                      <div className="fade-in">
+                        <div onClick={()=>setShowDone(v=>!v)} style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px', cursor:'pointer', userSelect:'none'}}>
+                          <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                            <span style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'800', fontSize:'0.82rem', color:'#059669', letterSpacing:'2px', textTransform:'uppercase'}}>COMPLETED TODAY</span>
+                            <span className="chip" style={{background:'#dcfce7', color:'#166534'}}>{doneT.length}</span>
+                          </div>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.72rem', color:'var(--fg3)', letterSpacing:'1px'}}>
+                            {showDone?'▲ HIDE':'▼ SHOW'}
+                          </span>
+                        </div>
+                        {showDone && (
+                          <div className="card" style={{overflow:'hidden'}}>
+                            <div style={{overflowX:'auto'}}>
+                              <table className="staff-tbl" style={{width:'100%', borderCollapse:'collapse', minWidth:'380px'}}>
+                                <thead>
+                                  <tr style={{background:'#064e3b'}}>
+                                    {[
+                                      {h:'#',    align:'center', width:'44px'},
+                                      {h:'TASK', align:'left',   width:'auto'},
+                                      {h:'TIME', align:'center', width:'90px'},
+                                      {h:'BY',   align:'center', width:'130px'},
+                                    ].map(({h,align,width})=>(
+                                      <th key={h} style={{...S.th, color:'rgba(255,255,255,0.7)', textAlign:align, width}}>{h}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {doneT.map((task,i)=>{
+                                    const comp = completions[task.id];
+                                    return (
+                                      <tr key={task.id} className="row-done">
+                                        <td style={{...S.td, fontFamily:"'IBM Plex Mono',monospace", fontWeight:'600', color:'#059669', textAlign:'center', width:'40px', fontSize:'0.8rem'}}>{task.rank||i+1}</td>
+                                        <td style={{...S.td, fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700', fontSize:'0.9rem', color:'#065f46'}}>✓ {task.name}</td>
+                                        <td style={{...S.td, fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.78rem', color:'#059669', textAlign:'center', whiteSpace:'nowrap'}}>{task.deadline}</td>
+                                        <td style={{...S.td, fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.72rem', color:'#064e3b', textAlign:'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textTransform:'uppercase'}}>
+                                          {comp?.completedBy||'—'}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Level 0: businesses with departments directly listed
+  return (
+    <div style={S.page}>
+      <AdminHeader title="MANAGE BUSINESS" subtitle="Tap dept to view tasks" onBack={() => navigate('adminDash')} onLogout={logout} isDark={isDark} onToggleDark={toggleTheme} navigate={navigate} currentScreen="manageBusiness" />
+      <div style={S.section} className="desktop-grid">
+        {businesses.length===0 ? <EmptyState icon="🏢" text="No businesses yet" /> : (
+          <div style={{display:'flex', flexDirection:'column', gap:'20px'}}>
+            {businesses.map(b => {
+              const bizDepts = departments.filter(d => d.businessId===b.id);
+              return (
+                <div key={b.id}>
+                  {/* Business header */}
+                  <div style={{
+                    display:'flex', alignItems:'center', gap:'8px',
+                    fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.65rem',
+                    fontWeight:'600', color:'var(--fg3)', letterSpacing:'2px',
+                    textTransform:'uppercase', marginBottom:'8px', paddingLeft:'2px'
+                  }}>
+                    <span>🏢</span>
+                    <span>{b.name.toUpperCase()}</span>
+                    <div style={{flex:1, height:'1px', background:'var(--border)', marginLeft:'6px'}}/>
+                  </div>
+                  {/* Dept rows */}
+                  {bizDepts.length===0 ? (
+                    <div style={{fontSize:'0.75rem',color:'var(--fg3)',fontFamily:"'IBM Plex Mono',monospace",padding:'8px 16px'}}>No departments added</div>
+                  ) : (
+                    <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                      {bizDepts.map(d => {
+                        const total = tasks.filter(t => t.departmentId===d.id && taskActiveToday(t)).length;
+                        return (
+                          <div key={d.id} className="card tile-hover"
+                            onClick={() => { setSelBiz(b.id); setSelDept(d.id); setLevel(1); }}
+                            style={{
+                              padding:'16px 20px', cursor:'pointer',
+                              display:'flex', justifyContent:'space-between', alignItems:'center',
+                              borderLeft:'4px solid #f59e0b'
+                            }}>
+                            <div>
+                              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:'800',fontSize:'1.05rem',letterSpacing:'0.5px',color:'var(--fg)'}}>{d.name.toUpperCase()}</div>
+                              <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:'0.7rem',color:'var(--fg3)',marginTop:'3px'}}>{total} TASK{total!==1?'S':''} TODAY</div>
+                            </div>
+                            <div style={{color:'#6366f1',fontSize:'1.2rem',fontWeight:'bold'}}>→</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════
+//  REPORTS
+// ══════════════════════════════════
+function Reports({ ctx }) {
+  const { businesses, departments, tasks, navigate, logout, isDark, toggleTheme } = ctx;
+  const [date, setDate]           = useState(todayStr());
+  const [filterBiz, setFilterBiz] = useState('');
+  const [filterDept, setFilterDept] = useState('');
+  const [result, setResult]       = useState(null);
+  const [loading, setLoading]     = useState(false);
+
+  const filteredDepts = departments.filter(d => !filterBiz || d.businessId===filterBiz);
+
+  const run = async () => {
+    setLoading(true); setResult(null);
+    try {
+      const snap = await db.collection('taskCompletions').where('date','==',date).get();
+      const compMap = {};
+      snap.docs.forEach(d => { compMap[d.data().taskId] = {id:d.id,...d.data()}; });
+
+      let active = tasks.filter(t => taskActiveOnDate(t, date));
+      if (filterBiz)  active = active.filter(t => t.businessId===filterBiz);
+      if (filterDept) active = active.filter(t => t.departmentId===filterDept);
+      active = active.sort((a,b) => (parseInt(a.rank)||99)-(parseInt(b.rank)||99));
+
+      const rows = active.map(t => {
+        const comp     = compMap[t.id];
+        const compDate = comp ? tsToDate(comp.completedAt) : null;
+        const lateMin  = calcLateMins(t.deadline, compDate);
+        return { task:t, comp, compDate, compTimeStr:fmtTime(compDate), lateMin, lateStr:fmtLate(lateMin) };
+      });
+      setResult({ rows, date });
+    } catch(e) { alert('Report error: '+e.message); }
+    setLoading(false);
+  };
+
+  const getDeptName = id => departments.find(d=>d.id===id)?.name||'?';
+
+  return (
+    <div style={S.page}>
+      <AdminHeader title="REPORTS" subtitle="Daily Task Report" onBack={() => navigate('adminDash')} onLogout={logout} isDark={isDark} onToggleDark={toggleTheme} navigate={navigate} currentScreen="reports" />
+      <div style={S.section} className="desktop-grid">
+        <FormCard>
+          <Input label="Select Date" type="date" value={date} onChange={e=>setDate(e.target.value)} />
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 12px'}}>
+            <Select label="Business (opt)" value={filterBiz} onChange={e=>{setFilterBiz(e.target.value);setFilterDept('');}}>
+              <option value="">All Businesses</option>
+              {businesses.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+            </Select>
+            <Select label="Department (opt)" value={filterDept} onChange={e=>setFilterDept(e.target.value)}>
+              <option value="">All Departments</option>
+              {filteredDepts.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+            </Select>
+          </div>
+
+          <button onClick={run} disabled={loading} style={{...S.btnPrimary, width:'100%', padding:'14px', letterSpacing:'2px'}}>
+            {loading ? '⟳ RUNNING...' : 'RUN REPORT →'}
+          </button>
+        </FormCard>
+
+        {/* ── DAILY REPORT ── */}
+        {result && (
+          <>
+            <SectionHeader label={`DAILY REPORT — ${result.date}`} count={result.rows.length} />
+            {result.rows.length===0 ? <EmptyState icon="📅" text="No tasks scheduled for this date" /> : (
+              <div className="card" style={{overflow:'hidden'}}>
+                <div style={{overflowX:'auto'}}>
+                  <table style={{width:'100%', borderCollapse:'collapse', minWidth:'500px'}}>
+                    <thead>
+                      <tr style={{background:'#0b1120'}}>
+                        {['TASK','NAME','WORK TIME','WORK DONE','LATE'].map((h,i) => (
+                          <th key={h} style={{...S.th, color:'rgba(255,255,255,0.7)', textAlign:i>=2?'center':'left'}}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.rows.map(({task, comp, compTimeStr, lateStr, lateMin}) => (
+                        <tr key={task.id} style={{
+                          borderLeft: !comp ? '3px solid #ef4444' : lateMin > 0 ? '3px solid #f59e0b' : '3px solid #10b981'
+                        }}>
+                          <td style={{...S.td, maxWidth:'160px'}}>
+                            <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700', fontSize:'0.88rem', color:'var(--fg)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{task.name}</div>
+                            <div style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.62rem', color:'var(--fg3)', marginTop:'1px'}}>{getDeptName(task.departmentId)}</div>
+                          </td>
+                          <td style={{...S.td, fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.78rem', color:'var(--fg2)', whiteSpace:'nowrap'}}>
+                            {comp?.completedBy || '—'}
+                          </td>
+                          <td style={{...S.td, fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.82rem', color:'var(--fg2)', textAlign:'center', whiteSpace:'nowrap'}}>
+                            {task.deadline}
+                          </td>
+                          <td style={{...S.td, textAlign:'center'}}>
+                            {comp ? (
+                              <span style={{
+                                fontFamily:"'IBM Plex Mono',monospace", fontWeight:'600', fontSize:'0.85rem',
+                                color: lateMin > 0 ? '#dc2626' : '#059669',
+                                background: lateMin > 0 ? '#fef2f2' : '#dcfce7',
+                                padding:'4px 10px', borderRadius:'6px', whiteSpace:'nowrap'
+                              }}>{compTimeStr}</span>
+                            ) : (
+                              <span className="chip" style={{background:'#fef2f2', color:'#dc2626'}}>PENDING</span>
+                            )}
+                          </td>
+                          <td style={{...S.td, textAlign:'center', fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.78rem', fontWeight:'600', whiteSpace:'nowrap'}}>
+                            {comp ? (
+                              <span style={{color: lateMin <= 0 ? '#059669' : '#dc2626'}}>
+                                {lateStr}
+                              </span>
+                            ) : <span style={{color:'var(--fg3)'}}>—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════
+//  STAFF DASHBOARD
+// ══════════════════════════════════
+function StaffDashboard({ ctx }) {
+  const { currentUser, businesses, departments, tasks, logout, isDark, toggleTheme } = ctx;
+  const [allTasks, setAllTasks]       = useState([]);
+  const [completions, setCompletions] = useState({});
+  const [loading, setLoading]         = useState(true);
+  const [completing, setCompleting]   = useState(null);
+  const [showDone, setShowDone]       = useState(false);
+
+  const bizName  = businesses.find(b=>b.id===currentUser.businessId)?.name||'';
+  const deptName = departments.find(d=>d.id===currentUser.departmentId)?.name||'';
+
+  const loadAll = async () => {
+    setLoading(true);
+    const myTasks = tasks.filter(t => t.departmentId===currentUser.departmentId && t.active!==false && taskActiveToday(t))
+      .sort((a,b) => (parseInt(a.rank)||99)-(parseInt(b.rank)||99));
+    const compSnap = await db.collection('taskCompletions').where('date','==',todayStr()).get();
+    const m = {};
+    compSnap.docs.forEach(d => { m[d.data().taskId] = {id:d.id,...d.data()}; });
+    setAllTasks(myTasks); setCompletions(m); setLoading(false);
+  };
+
+  useEffect(() => {
+    loadAll();
+    const timer = setInterval(loadAll, 90000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const markDone = async (task) => {
+    if (completions[task.id]||completing===task.id) return;
+    setCompleting(task.id);
+    try {
+      await db.collection('taskCompletions').add({ taskId:task.id, date:todayStr(), completedBy:currentUser.name||currentUser.userId, completedAt:new Date(), photoUploaded:false });
+      setCompletions(prev => ({...prev,[task.id]:{taskId:task.id,date:todayStr(),completedBy:currentUser.name}}));
+    } catch(e) {}
+    setCompleting(null);
+  };
+
+  const pendingTasks = allTasks.filter(t => !completions[t.id]);
+  const doneTasks    = allTasks.filter(t =>  completions[t.id]);
+  const progress     = allTasks.length ? (doneTasks.length/allTasks.length)*100 : 0;
+
+  return (
+    <div style={{minHeight:'100vh', background:'var(--bg)'}}>
+      {/* Header */}
+      <div style={{background:'#0b1120', padding:'16px 16px 14px', position:'sticky', top:0, zIndex:100, boxShadow:'0 4px 20px rgba(0,0,0,0.4)'}}>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'12px'}}>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'900', fontSize:'1.4rem', color:'white', letterSpacing:'3px', textTransform:'uppercase'}}>
+              {(currentUser.name||currentUser.userId).toUpperCase()}
+            </div>
+            <div style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.62rem', color:'rgba(255,255,255,0.3)', marginTop:'2px', letterSpacing:'1.5px', textTransform:'uppercase'}}>
+              {bizName.toUpperCase()}{deptName?` › ${deptName.toUpperCase()}`:''}
+            </div>
+          </div>
+          <div style={{display:'flex', gap:'8px', alignItems:'center', flexShrink:0}}>
+            <button onClick={toggleTheme} title="Toggle theme" style={{
+              background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)',
+              color:'white', width:'34px', height:'34px', borderRadius:'8px',
+              cursor:'pointer', fontSize:'1rem',
+              display:'flex', alignItems:'center', justifyContent:'center'
+            }}>{isDark ? '☀️' : '🌙'}</button>
+            <button onClick={logout} style={{
+              background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)',
+              color:'rgba(255,255,255,0.6)', padding:'6px 12px', borderRadius:'7px',
+              cursor:'pointer', fontFamily:"'Barlow Condensed',sans-serif",
+              fontWeight:'700', fontSize:'0.72rem', letterSpacing:'1px', textTransform:'uppercase'
+            }}>LOG OUT</button>
+          </div>
+        </div>
+        <div style={{display:'flex', gap:'16px', alignItems:'center', marginBottom:'10px'}}>
+          <div style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.62rem', color:'rgba(255,255,255,0.25)', letterSpacing:'1.5px', textTransform:'uppercase'}}>
+            {new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'}).toUpperCase()}
+          </div>
+          <div style={{marginLeft:'auto', display:'flex', gap:'14px'}}>
+            <span style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.7rem', textTransform:'uppercase'}}>
+              <span style={{color:'#fbbf24', fontWeight:'700', fontSize:'0.95rem'}}>{pendingTasks.length}</span>
+              <span style={{color:'rgba(255,255,255,0.3)'}}> LEFT</span>
+            </span>
+            <span style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.7rem', textTransform:'uppercase'}}>
+              <span style={{color:'#4ade80', fontWeight:'700', fontSize:'0.95rem'}}>{doneTasks.length}</span>
+              <span style={{color:'rgba(255,255,255,0.3)'}}> DONE</span>
+            </span>
+          </div>
+        </div>
+        {allTasks.length > 0 && (
+          <div style={{height:'4px', background:'rgba(255,255,255,0.08)', borderRadius:'2px', overflow:'hidden'}}>
+            <div style={{height:'100%', width:`${progress}%`, background:'linear-gradient(90deg,#f59e0b,#10b981)', borderRadius:'2px', transition:'width 0.6s ease'}}/>
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div style={S.section} className="desktop-grid">
+        {loading ? (
+          <div style={{textAlign:'center', padding:'60px 20px'}}>
+            <div className="pulse" style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.72rem', letterSpacing:'3px', color:'var(--fg3)', textTransform:'uppercase'}}>LOADING TASKS...</div>
+          </div>
+        ) : allTasks.length===0 ? (
+          <EmptyState icon="📅" text="No tasks today" />
+        ) : (
+          <div className="fade-in">
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
+              <span style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.62rem', color:'var(--fg3)', letterSpacing:'1px', textTransform:'uppercase'}}>PENDING TASKS</span>
+              <button onClick={loadAll} style={{...S.btnSmall, background:'var(--surface2)', color:'var(--fg2)'}}>
+                {loading?'⟳':'↻'} REFRESH
+              </button>
+            </div>
+            {pendingTasks.length===0 ? (
+              <div className="card slide-up" style={{padding:'40px 20px', textAlign:'center', marginBottom:'16px'}}>
+                <div style={{fontSize:'2.5rem', marginBottom:'10px'}}>✅</div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'900', fontSize:'1.3rem', color:'#059669', letterSpacing:'4px', textTransform:'uppercase'}}>ALL DONE!</div>
+                <div style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.64rem', color:'var(--fg3)', marginTop:'6px', letterSpacing:'2px', textTransform:'uppercase'}}>All tasks completed for today</div>
+              </div>
+            ) : (
+              <div className="card" style={{overflow:'hidden', marginBottom:'16px'}}>
+                <div style={{overflowX:'auto'}}>
+                  <table className="staff-tbl" style={{width:'100%', borderCollapse:'collapse', minWidth:'380px'}}>
+                    <thead>
+                      <tr style={{background:'#0b1120'}}>
+                        {[
+                          {h:'#',      align:'center', width:'44px'},
+                          {h:'TASK',   align:'left',   width:'auto'},
+                          {h:'TIME',   align:'center', width:'90px'},
+                          {h:'STATUS', align:'center', width:'130px'},
+                        ].map(({h,align,width})=>(
+                          <th key={h} style={{...S.th, color:'rgba(255,255,255,0.65)', textAlign:align, width}}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingTasks.map((task,i) => (
+                        <tr key={task.id}>
+                          <td style={{...S.td, fontFamily:"'IBM Plex Mono',monospace", fontWeight:'600', color:'#6366f1', textAlign:'center', width:'40px', fontSize:'0.8rem'}}>{task.rank||i+1}</td>
+                          <td style={{...S.td, fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700', fontSize:'0.9rem', textTransform:'uppercase', color:'var(--fg)'}}>{task.name}</td>
+                          <td style={{...S.td, fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.78rem', color:'#dc2626', whiteSpace:'nowrap', textAlign:'center', textTransform:'uppercase'}}>{task.deadline}</td>
+                          <td style={{...S.td, textAlign:'center'}}>
+                            <button onClick={()=>markDone(task)} disabled={completing===task.id} style={{
+                              background: completing===task.id ? '#94a3b8' : '#059669',
+                              border:'none', color:'white', padding:'6px 12px', borderRadius:'7px',
+                              cursor:'pointer', fontFamily:"'Barlow Condensed',sans-serif",
+                              fontWeight:'700', fontSize:'0.75rem', letterSpacing:'1px',
+                              textTransform:'uppercase', whiteSpace:'nowrap'
+                            }}>
+                              {completing===task.id?'⟳':'DONE ✓'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {doneTasks.length > 0 && (
+              <div className="fade-in">
+                <div onClick={()=>setShowDone(v=>!v)} style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px', cursor:'pointer', userSelect:'none'}}>
+                  <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                    <span style={{fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'800', fontSize:'0.82rem', color:'#059669', letterSpacing:'2px', textTransform:'uppercase'}}>COMPLETED TODAY</span>
+                    <span className="chip" style={{background:'#dcfce7', color:'#166534'}}>{doneTasks.length}</span>
+                  </div>
+                  <span style={{fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.72rem', color:'var(--fg3)', letterSpacing:'1px'}}>
+                    {showDone?'▲ HIDE':'▼ SHOW'}
+                  </span>
+                </div>
+                {showDone && (
+                  <div className="card" style={{overflow:'hidden'}}>
+                    <div style={{overflowX:'auto'}}>
+                      <table className="staff-tbl" style={{width:'100%', borderCollapse:'collapse', minWidth:'380px'}}>
+                        <thead>
+                          <tr style={{background:'#064e3b'}}>
+                            {[
+                              {h:'#',    align:'center', width:'44px'},
+                              {h:'TASK', align:'left',   width:'auto'},
+                              {h:'TIME', align:'center', width:'90px'},
+                              {h:'BY',   align:'center', width:'130px'},
+                            ].map(({h,align,width})=>(
+                              <th key={h} style={{...S.th, color:'rgba(255,255,255,0.7)', textAlign:align, width}}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {doneTasks.map((task,i)=>{
+                            const comp = completions[task.id];
+                            return (
+                              <tr key={task.id} className="row-done">
+                                <td style={{...S.td, fontFamily:"'IBM Plex Mono',monospace", fontWeight:'600', color:'#059669', textAlign:'center', width:'40px', fontSize:'0.8rem'}}>{task.rank||i+1}</td>
+                                <td style={{...S.td, fontFamily:"'Barlow Condensed',sans-serif", fontWeight:'700', fontSize:'0.9rem', color:'#065f46', textTransform:'uppercase'}}>✓ {task.name}</td>
+                                <td style={{...S.td, fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.78rem', color:'#059669', textAlign:'center', whiteSpace:'nowrap'}}>{task.deadline}</td>
+                                <td style={{...S.td, fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.72rem', color:'#064e3b', textAlign:'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textTransform:'uppercase'}}>
+                                  {comp?.completedBy||'—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div style={{padding:'8px 16px 28px', textAlign:'center', fontFamily:"'IBM Plex Mono',monospace", fontSize:'0.58rem', color:'var(--fg3)', letterSpacing:'2px', textTransform:'uppercase'}}>
+        TASKFLOW · NDC1877 · {todayStr()}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════
+//  MOUNT
+// ══════════════════════════════════
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
